@@ -1,8 +1,35 @@
 import Link from "next/link";
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://lianai-junshi.netlify.app";
+
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "恋爱军师",
+  alternateName: "Lian'ai Junshi",
+  description:
+    "基于男女思维差异理论的 AI 恋爱实战指导工具，提供情绪解读、3 套话术、雷区提醒。",
+  url: SITE_URL,
+  applicationCategory: "LifestyleApplication",
+  operatingSystem: "Any (web)",
+  inLanguage: "zh-CN",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "CNY",
+  },
+};
+
 export default function Home() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:py-20 flex-1">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(STRUCTURED_DATA),
+        }}
+      />
       <section className="text-center mb-16">
         <div className="inline-block px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 text-xs font-medium mb-5">
           v0.1 MVP · 话术军师已上线

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pickExampleFor } from "@/lib/examples";
 import { callDeepSeek } from "@/lib/llm";
 import { buildCoachPrompt } from "@/lib/prompts";
 import { checkAndIncrement, extractIp } from "@/lib/rate-limit";
+import { CoachResultSchema } from "@/lib/schemas";
 import type { CoachInput, CoachResult } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -11,6 +13,10 @@ function getQuota(): number {
   const raw = process.env.FREE_QUOTA_PER_DAY;
   const n = raw ? parseInt(raw, 10) : 5;
   return Number.isFinite(n) && n > 0 ? n : 5;
+}
+
+function isMockMode(): boolean {
+  return process.env.MOCK_LLM === "1" || !process.env.DEEPSEEK_API_KEY;
 }
 
 function isValidInput(x: unknown): x is CoachInput {
@@ -25,6 +31,42 @@ function isValidInput(x: unknown): x is CoachInput {
     return false;
   }
   return true;
+}
+
+async function getMockResult(input: CoachInput): Promise<CoachResult> {
+  await new Promise((r) => setTimeout(r, 600));
+  return pickExampleFor(input);
+}
+
+async function callWithValidation(
+  input: CoachInput,
+  maxAttempts = 2,
+): Promise<CoachResult> {
+  let lastError = "unknown";
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const messages = buildCoachPrompt(input);
+    let raw: string;
+    try {
+      raw = await callDeepSeek(messages);
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : "LLM call failed";
+      continue;
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      lastError = "JSON parse failed";
+      continue;
+    }
+
+    const validated = CoachResultSchema.safeParse(parsed);
+    if (validated.success) return validated.data;
+
+    lastError = `Schema validation failed: ${validated.error.issues[0]?.message ?? "unknown"}`;
+  }
+  throw new Error(lastError);
 }
 
 export async function POST(req: NextRequest) {
@@ -56,38 +98,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const messages = buildCoachPrompt(input);
-    const raw = await callDeepSeek(messages);
-
-    let result: CoachResult;
-    try {
-      result = JSON.parse(raw) as CoachResult;
-    } catch {
-      return NextResponse.json(
-        { error: "AI 输出解析失败，请重试" },
-        { status: 502 },
-      );
-    }
-
-    if (
-      !result.emotion ||
-      !Array.isArray(result.replies) ||
-      result.replies.length === 0
-    ) {
-      return NextResponse.json(
-        { error: "AI 输出格式不完整，请重试" },
-        { status: 502 },
-      );
-    }
+    const result = isMockMode()
+      ? await getMockResult(input)
+      : await callWithValidation(input);
 
     return NextResponse.json({ result, remaining: rate.remaining });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "未知错误";
     console.error("[coach]", msg);
-    const friendly = msg.includes("DEEPSEEK_API_KEY")
-      ? "服务未配置 API 密钥，请联系管理员"
-      : msg.startsWith("DeepSeek")
-        ? "AI 服务暂时不可用，请稍后再试"
+    const friendly = msg.startsWith("DeepSeek")
+      ? "AI 服务暂时不可用，请稍后再试"
+      : msg.includes("Schema validation") || msg.includes("JSON parse")
+        ? "AI 输出格式异常，请重试一次"
         : "服务异常，请稍后重试";
     return NextResponse.json({ error: friendly }, { status: 500 });
   }

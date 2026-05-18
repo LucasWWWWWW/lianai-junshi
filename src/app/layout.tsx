@@ -1,15 +1,49 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://lianai-junshi.netlify.app";
+
 export const metadata: Metadata = {
-  title: "恋爱军师 — 懂男女思维差异，不做恋爱糊涂人",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "恋爱军师 — 懂男女思维差异，不做恋爱糊涂人",
+    template: "%s · 恋爱军师",
+  },
   description:
     "基于男女思维差异理论的 AI 恋爱实战指导工具。贴上聊天 → 看穿情绪 → 给 3 套话术 + 雷区提醒。",
+  keywords: [
+    "恋爱话术",
+    "高情商回复",
+    "男女思维差异",
+    "AI 恋爱军师",
+    "潜台词解读",
+    "情侣矛盾",
+    "异地恋",
+  ],
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "恋爱军师",
+  },
+  openGraph: {
+    title: "恋爱军师 — 懂男女思维差异，不做恋爱糊涂人",
+    description:
+      "贴上对方刚发的消息，AI 解读情绪 + 3 套话术 + 雷区提醒。免费试用，不存原文。",
+    url: SITE_URL,
+    siteName: "恋爱军师",
+    locale: "zh_CN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "恋爱军师 — AI 恋爱实战指导",
+    description: "贴聊天 → AI 给 3 套话术 + 雷区。免费试用。",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 

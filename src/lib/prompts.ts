@@ -1,3 +1,4 @@
+import { COACH_EXAMPLES } from "./examples";
 import type { ChatMessage, CoachInput } from "./types";
 
 const PERSPECTIVE_LABEL = {
@@ -38,10 +39,11 @@ const SYSTEM_PROMPT = `你是一位资深恋爱军师，深度掌握男女思维
 - 三套话术要有明显风格差异，不要相互雷同
 - 雷区话术列 2-3 条，覆盖最容易踩的坑
 - 全部中文输出
-- 不要使用任何引用书名/作者名`;
+- 不要使用任何引用书名/作者名
+- 参考下方示例的「质感」：具体场景、具体行动、有人情味、能直接复制发送`;
 
-export function buildCoachPrompt(input: CoachInput): ChatMessage[] {
-  const userPrompt = [
+function formatUserMessage(input: CoachInput): string {
+  return [
     `视角：${PERSPECTIVE_LABEL[input.perspective]}`,
     input.stage ? `关系阶段：${STAGE_LABEL[input.stage]}` : null,
     input.context ? `背景补充：${input.context}` : null,
@@ -55,9 +57,34 @@ export function buildCoachPrompt(input: CoachInput): ChatMessage[] {
   ]
     .filter(Boolean)
     .join("\n");
+}
 
-  return [
+function pickFewShotExamples(input: CoachInput) {
+  const sameView = COACH_EXAMPLES.filter(
+    (e) => e.input.perspective === input.perspective,
+  );
+
+  if (sameView.length >= 2) return sameView.slice(0, 2);
+
+  const other = COACH_EXAMPLES.filter(
+    (e) => e.input.perspective !== input.perspective,
+  );
+  return [...sameView, ...other].slice(0, 2);
+}
+
+export function buildCoachPrompt(input: CoachInput): ChatMessage[] {
+  const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
-    { role: "user", content: userPrompt },
   ];
+
+  for (const ex of pickFewShotExamples(input)) {
+    messages.push({ role: "user", content: formatUserMessage(ex.input) });
+    messages.push({
+      role: "assistant",
+      content: JSON.stringify(ex.output),
+    });
+  }
+
+  messages.push({ role: "user", content: formatUserMessage(input) });
+  return messages;
 }
