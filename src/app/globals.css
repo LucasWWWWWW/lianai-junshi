@@ -8,8 +8,6 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +20,18 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .form-input,
+  .form-select {
+    @apply w-full rounded-lg border border-gray-300 dark:border-gray-700
+           bg-white dark:bg-gray-900 px-3 py-2 text-sm
+           focus:outline-none focus:ring-2 focus:ring-rose-500/40
+           focus:border-rose-500 transition;
+  }
 }

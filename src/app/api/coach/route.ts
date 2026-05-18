@@ -1,0 +1,94 @@
+import { NextRequest, NextResponse } from "next/server";
+import { callDeepSeek } from "@/lib/llm";
+import { buildCoachPrompt } from "@/lib/prompts";
+import { checkAndIncrement, extractIp } from "@/lib/rate-limit";
+import type { CoachInput, CoachResult } from "@/lib/types";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function getQuota(): number {
+  const raw = process.env.FREE_QUOTA_PER_DAY;
+  const n = raw ? parseInt(raw, 10) : 5;
+  return Number.isFinite(n) && n > 0 ? n : 5;
+}
+
+function isValidInput(x: unknown): x is CoachInput {
+  if (!x || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  if (typeof o.message !== "string" || !o.message.trim()) return false;
+  if (o.message.length > 2000) return false;
+  if (
+    o.perspective !== "male-to-female" &&
+    o.perspective !== "female-to-male"
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export async function POST(req: NextRequest) {
+  let input: unknown;
+  try {
+    input = await req.json();
+  } catch {
+    return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
+  }
+
+  if (!isValidInput(input)) {
+    return NextResponse.json(
+      { error: "请输入对方的消息（最多 2000 字）并选择视角" },
+      { status: 400 },
+    );
+  }
+
+  const quota = getQuota();
+  const ip = extractIp(req.headers);
+  const rate = await checkAndIncrement(ip, quota);
+  if (!rate.ok) {
+    return NextResponse.json(
+      {
+        error: `今日免费额度已用完（${quota} 次/天）。明天再来，或留意付费版上线。`,
+        remaining: 0,
+      },
+      { status: 429 },
+    );
+  }
+
+  try {
+    const messages = buildCoachPrompt(input);
+    const raw = await callDeepSeek(messages);
+
+    let result: CoachResult;
+    try {
+      result = JSON.parse(raw) as CoachResult;
+    } catch {
+      return NextResponse.json(
+        { error: "AI 输出解析失败，请重试" },
+        { status: 502 },
+      );
+    }
+
+    if (
+      !result.emotion ||
+      !Array.isArray(result.replies) ||
+      result.replies.length === 0
+    ) {
+      return NextResponse.json(
+        { error: "AI 输出格式不完整，请重试" },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json({ result, remaining: rate.remaining });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "未知错误";
+    console.error("[coach]", msg);
+    const friendly = msg.includes("DEEPSEEK_API_KEY")
+      ? "服务未配置 API 密钥，请联系管理员"
+      : msg.startsWith("DeepSeek")
+        ? "AI 服务暂时不可用，请稍后再试"
+        : "服务异常，请稍后重试";
+    return NextResponse.json({ error: friendly }, { status: 500 });
+  }
+}
