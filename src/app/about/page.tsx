@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function AboutPage() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8 sm:py-12 flex-1 w-full">
+    <main id="main" className="mx-auto max-w-2xl px-4 py-8 sm:py-12 flex-1 w-full">
       <Link
         href="/"
         className="text-sm text-rose-600 hover:text-rose-700 dark:text-rose-400"

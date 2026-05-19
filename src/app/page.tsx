@@ -23,7 +23,7 @@ const STRUCTURED_DATA = {
 
 export default function Home() {
   return (
-    <main className="mx-auto max-w-4xl px-4 py-12 sm:py-20 flex-1">
+    <main id="main" className="mx-auto max-w-4xl px-4 py-12 sm:py-20 flex-1">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -97,11 +97,23 @@ export default function Home() {
 
       <footer className="mt-20 pt-8 border-t border-gray-200 dark:border-gray-800 text-center text-xs text-gray-500 dark:text-gray-500">
         <p>本工具仅提供恋爱沟通建议，不存储任何聊天原文。</p>
-        <p className="mt-2">
+        <nav
+          aria-label="次级导航"
+          className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1"
+        >
+          <Link href="/coach" className="hover:underline">
+            话术军师
+          </Link>
+          <Link href="/history" className="hover:underline">
+            历史
+          </Link>
+          <Link href="/favorites" className="hover:underline">
+            金句库
+          </Link>
           <Link href="/about" className="hover:underline">
             关于 &amp; 隐私
           </Link>
-        </p>
+        </nav>
       </footer>
     </main>
   );

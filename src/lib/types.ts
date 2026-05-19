@@ -26,6 +26,8 @@ export interface CoachResult {
   realNeed: string;
   replies: Reply[];
   redLines: RedLine[];
+  /** Trigger words/phrases from the original message worth highlighting. */
+  emotionKeywords?: string[];
 }
 
 export interface CoachResponse {

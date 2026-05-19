@@ -19,6 +19,7 @@ export const COACH_EXAMPLES: CoachExample[] = [
         "嘴上说没事但情绪已经退后了，平静里带着委屈，等你主动给个台阶。",
       subtext: "我期待你优先选我，而不是把我排在工作后面。",
       realNeed: "想确认在你心里有没有比工作更靠前的位置，需要被重视感。",
+      emotionKeywords: ["没事", "你忙你的"],
       replies: [
         {
           style: "温柔共情版",
@@ -65,6 +66,7 @@ export const COACH_EXAMPLES: CoachExample[] = [
         "他在你脸上读出了距离感，开始怀疑你对他的兴趣，需要被肯定。",
       subtext: "我担心是不是你不喜欢我了，或者我哪里做得不够好。",
       realNeed: "想确认你今晚的真实感受，希望你给一个肯定具体的回应。",
+      emotionKeywords: ["心不在焉", "感觉你"],
       replies: [
         {
           style: "温柔共情版",
@@ -107,6 +109,7 @@ export const COACH_EXAMPLES: CoachExample[] = [
         "她已经说累了，背后是两天没人来哄+婆媳问题让她觉得被孤立，是失望叠加。",
       subtext: "你从来不站在我这边，我在你家里没有位置。",
       realNeed: "需要你明确表态站她，把她从「外人」位置拉回「自己人」。",
+      emotionKeywords: ["算了", "懒得说", "一边去"],
       replies: [
         {
           style: "温柔共情版",
@@ -153,6 +156,7 @@ export const COACH_EXAMPLES: CoachExample[] = [
         "看似分享，其实想确认你介不介意他没带你，以及你是否会主动安排下次一起。",
       subtext: "我希望你说想我了/羡慕了，证明在你心里我有位置。",
       realNeed: "需要听到你想被带上+你也愿意花时间陪他玩这件事。",
+      emotionKeywords: ["下次叫上你"],
       replies: [
         {
           style: "温柔共情版",

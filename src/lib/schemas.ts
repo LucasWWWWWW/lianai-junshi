@@ -18,6 +18,7 @@ export const CoachResultSchema = z.object({
   realNeed: z.string().min(1).max(200),
   replies: z.array(ReplySchema).min(3).max(4),
   redLines: z.array(RedLineSchema).min(1).max(5),
+  emotionKeywords: z.array(z.string().min(1).max(20)).max(8).optional(),
 });
 
 export type CoachResultParsed = z.infer<typeof CoachResultSchema>;

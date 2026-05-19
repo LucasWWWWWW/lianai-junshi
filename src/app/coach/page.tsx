@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function CoachPage() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8 sm:py-12 flex-1 w-full">
+    <main id="main" className="mx-auto max-w-2xl px-4 py-8 sm:py-12 flex-1 w-full">
       <header className="mb-8">
         <Link
           href="/"

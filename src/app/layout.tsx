@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { Providers } from "@/components/Providers";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import "./globals.css";
 
 const SITE_URL =
@@ -60,9 +62,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className="h-full antialiased">
+    <html lang="zh-CN" suppressHydrationWarning className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-        {children}
+        <Providers>
+          <a
+            href="#main"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:bg-rose-600 focus:text-white focus:px-3 focus:py-1.5 focus:rounded"
+          >
+            跳到主内容
+          </a>
+          <ThemeToggle />
+          {children}
+        </Providers>
       </body>
     </html>
   );

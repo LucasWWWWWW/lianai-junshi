@@ -8,6 +8,8 @@ export interface HistoryEntry {
   createdAt: number;
   input: CoachInput;
   result: CoachResult;
+  /** Free-form short tag user can attach to find / group later. */
+  tag?: string;
 }
 
 function isBrowser() {
@@ -68,6 +70,37 @@ export function removeHistory(id: string): HistoryEntry[] {
 export function clearHistory(): void {
   if (!isBrowser()) return;
   localStorage.removeItem(STORAGE_KEY);
+}
+
+export function updateHistoryEntry(
+  id: string,
+  patch: Partial<Pick<HistoryEntry, "tag">>,
+): HistoryEntry[] {
+  if (!isBrowser()) return [];
+  const current = loadHistory();
+  const next = current.map((e) => (e.id === id ? { ...e, ...patch } : e));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {}
+  return next;
+}
+
+export function moveHistoryEntry(
+  id: string,
+  direction: "up" | "down",
+): HistoryEntry[] {
+  if (!isBrowser()) return [];
+  const current = loadHistory();
+  const idx = current.findIndex((e) => e.id === id);
+  if (idx === -1) return current;
+  const target = direction === "up" ? idx - 1 : idx + 1;
+  if (target < 0 || target >= current.length) return current;
+  const next = current.slice();
+  [next[idx], next[target]] = [next[target], next[idx]];
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {}
+  return next;
 }
 
 function cryptoRandomId(): string {
