@@ -61,36 +61,45 @@ export default function Home() {
             title="实时话术军师"
             desc="贴聊天，秒出 3 套高情商回复 + 雷区提醒"
             status="可用"
+            href="/coach"
+            version="v0.1"
           />
           <FeatureCard
             emoji="🆘"
             title="矛盾急救室"
             desc="吵架冷战场景，AI 出道歉话术 + 复盘"
-            status="近期"
+            status="可用"
+            href="/sos"
+            version="v0.2"
           />
           <FeatureCard
             emoji="📖"
             title="潜台词词典"
             desc="读懂对方「我没事」「随便」的真实含义"
-            status="近期"
+            status="可用"
+            href="/dict"
+            version="v0.2"
           />
           <FeatureCard
             emoji="📊"
             title="关系雷达"
             desc="测评关系健康度，可视化看见隐患"
             status="规划中"
+            version="v0.3"
           />
           <FeatureCard
             emoji="🎯"
             title="约会全案策划"
             desc="区分男女偏好，告别吃饭看电影老三样"
             status="规划中"
+            version="v0.3"
           />
           <FeatureCard
             emoji="👤"
             title="AI 形象军师"
             desc="上传照片，AI 重绘穿搭发型 + 打分"
-            status="规划中"
+            status="需 API"
+            version="v1.0"
           />
         </div>
       </section>
@@ -119,43 +128,84 @@ export default function Home() {
   );
 }
 
+type FeatureStatus = "可用" | "近期" | "规划中" | "需 API";
+
 function FeatureCard({
   emoji,
   title,
   desc,
   status,
+  href,
+  version,
 }: {
   emoji: string;
   title: string;
   desc: string;
-  status: "可用" | "近期" | "规划中";
+  status: FeatureStatus;
+  href?: string;
+  version: string;
 }) {
-  const isActive = status === "可用";
-  const statusColor =
+  const isActive = status === "可用" && href;
+
+  const cardBase =
+    "relative rounded-xl border p-4 transition h-full flex flex-col";
+  const cardActive =
+    "border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20 hover:border-rose-400 dark:hover:border-rose-700 hover:shadow-md cursor-pointer";
+  const cardInactive =
+    "border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/60 opacity-70 cursor-not-allowed";
+
+  const badge =
     status === "可用"
       ? "bg-rose-600 text-white"
       : status === "近期"
         ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-        : "bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400";
+        : status === "需 API"
+          ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+          : "bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400";
+
+  const body = (
+    <>
+      <div className="text-2xl mb-2">{emoji}</div>
+      <div className="font-semibold text-sm">{title}</div>
+      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed flex-1">
+        {desc}
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span
+          className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium ${badge}`}
+        >
+          {status === "可用" ? `✓ ${status}` : status === "需 API" ? "🔑 需 API" : "敬请期待"}
+        </span>
+        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">
+          {version}
+        </span>
+      </div>
+    </>
+  );
+
+  if (isActive) {
+    return (
+      <Link
+        href={href!}
+        className={`${cardBase} ${cardActive}`}
+        aria-label={`${title} — ${desc}`}
+      >
+        {body}
+      </Link>
+    );
+  }
 
   return (
     <div
-      className={`rounded-xl border p-4 transition ${
-        isActive
-          ? "border-rose-300 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-950/20"
-          : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/40"
-      }`}
+      className={`${cardBase} ${cardInactive}`}
+      aria-disabled="true"
+      title={
+        status === "需 API"
+          ? "此功能需要外部 API key，等基础功能完善后开放"
+          : `${version} 计划中`
+      }
     >
-      <div className="text-2xl mb-2">{emoji}</div>
-      <div className="font-semibold text-sm">{title}</div>
-      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
-        {desc}
-      </div>
-      <div
-        className={`mt-3 inline-block text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColor}`}
-      >
-        {status}
-      </div>
+      {body}
     </div>
   );
 }

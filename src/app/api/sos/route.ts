@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logCall } from "@/lib/analytics";
-import { pickExampleFor } from "@/lib/examples";
 import { callDeepSeek } from "@/lib/llm";
-import { buildCoachPrompt } from "@/lib/prompts";
 import { checkAndIncrement, extractIp } from "@/lib/rate-limit";
 import { CoachResultSchema } from "@/lib/schemas";
-import type { CoachInput, CoachResult } from "@/lib/types";
+import {
+  type SosInput,
+  buildSosPrompt,
+} from "@/lib/sos-prompts";
+import { pickSosExampleFor } from "@/lib/sos-examples";
+import type { CoachResult } from "@/lib/types";
+
+function classifyError(msg: string): "llm" | "schema" | "json" | "other" {
+  if (msg.startsWith("DeepSeek")) return "llm";
+  if (msg.includes("Schema")) return "schema";
+  if (msg.includes("JSON")) return "json";
+  return "other";
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const SOS_SCENARIOS = [
+  "cold-war",
+  "big-fight",
+  "small-bicker",
+  "jealousy",
+  "family-conflict",
+  "broken-promise",
+] as const;
+
+const FAULT_LEVELS = ["mine", "theirs", "both"] as const;
 
 function getQuota(): number {
   const raw = process.env.FREE_QUOTA_PER_DAY;
@@ -20,32 +41,41 @@ function isMockMode(): boolean {
   return process.env.MOCK_LLM === "1" || !process.env.DEEPSEEK_API_KEY;
 }
 
-function isValidInput(x: unknown): x is CoachInput {
+function isValidSosInput(x: unknown): x is SosInput {
   if (!x || typeof x !== "object") return false;
   const o = x as Record<string, unknown>;
-  if (typeof o.message !== "string" || !o.message.trim()) return false;
-  if (o.message.length > 2000) return false;
   if (
     o.perspective !== "male-to-female" &&
     o.perspective !== "female-to-male"
-  ) {
+  )
     return false;
-  }
+  if (!SOS_SCENARIOS.includes(o.scenario as (typeof SOS_SCENARIOS)[number]))
+    return false;
+  if (!FAULT_LEVELS.includes(o.faultLevel as (typeof FAULT_LEVELS)[number]))
+    return false;
+  if (typeof o.context !== "string" || !o.context.trim()) return false;
+  if (o.context.length > 1500) return false;
+  if (
+    o.partnerMessage !== undefined &&
+    (typeof o.partnerMessage !== "string" ||
+      o.partnerMessage.length > 800)
+  )
+    return false;
   return true;
 }
 
-async function getMockResult(input: CoachInput): Promise<CoachResult> {
+async function getMockResult(input: SosInput): Promise<CoachResult> {
   await new Promise((r) => setTimeout(r, 600));
-  return pickExampleFor(input);
+  return pickSosExampleFor(input);
 }
 
 async function callWithValidation(
-  input: CoachInput,
+  input: SosInput,
   maxAttempts = 2,
 ): Promise<CoachResult> {
   let lastError = "unknown";
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const messages = buildCoachPrompt(input);
+    const messages = buildSosPrompt(input);
     let raw: string;
     try {
       raw = await callDeepSeek(messages);
@@ -53,7 +83,6 @@ async function callWithValidation(
       lastError = e instanceof Error ? e.message : "LLM call failed";
       continue;
     }
-
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
@@ -61,20 +90,11 @@ async function callWithValidation(
       lastError = "JSON parse failed";
       continue;
     }
-
     const validated = CoachResultSchema.safeParse(parsed);
     if (validated.success) return validated.data;
-
     lastError = `Schema validation failed: ${validated.error.issues[0]?.message ?? "unknown"}`;
   }
   throw new Error(lastError);
-}
-
-function classifyError(msg: string): "llm" | "schema" | "json" | "other" {
-  if (msg.startsWith("DeepSeek")) return "llm";
-  if (msg.includes("Schema")) return "schema";
-  if (msg.includes("JSON")) return "json";
-  return "other";
 }
 
 export async function POST(req: NextRequest) {
@@ -87,9 +107,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "请求格式错误" }, { status: 400 });
   }
 
-  if (!isValidInput(input)) {
+  if (!isValidSosInput(input)) {
     return NextResponse.json(
-      { error: "请输入对方的消息（最多 2000 字）并选择视角" },
+      { error: "请填写完整：场景 / 责任归属 / 当前状况" },
       { status: 400 },
     );
   }
@@ -100,11 +120,12 @@ export async function POST(req: NextRequest) {
   if (!rate.ok) {
     logCall({
       ts: Date.now(),
-      route: "coach",
+      route: "sos",
       status: "rate-limited",
       durationMs: Date.now() - startedAt,
       perspective: input.perspective,
-      variant: input.stage,
+      variant: input.scenario,
+      faultLevel: input.faultLevel,
     }).catch(() => {});
     return NextResponse.json(
       {
@@ -122,31 +143,33 @@ export async function POST(req: NextRequest) {
 
     logCall({
       ts: Date.now(),
-      route: "coach",
+      route: "sos",
       status: "ok",
       durationMs: Date.now() - startedAt,
       perspective: input.perspective,
-      variant: input.stage,
+      variant: input.scenario,
+      faultLevel: input.faultLevel,
       emotion: result.emotion,
     }).catch(() => {});
 
     return NextResponse.json({ result, remaining: rate.remaining });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "未知错误";
-    console.error("[coach]", msg);
+    console.error("[sos]", msg);
     logCall({
       ts: Date.now(),
-      route: "coach",
+      route: "sos",
       status: "error",
       durationMs: Date.now() - startedAt,
       perspective: input.perspective,
-      variant: input.stage,
+      variant: input.scenario,
+      faultLevel: input.faultLevel,
       errorClass: classifyError(msg),
     }).catch(() => {});
 
     const friendly = msg.startsWith("DeepSeek")
       ? "AI 服务暂时不可用，请稍后再试"
-      : msg.includes("Schema validation") || msg.includes("JSON parse")
+      : msg.includes("Schema") || msg.includes("JSON")
         ? "AI 输出格式异常，请重试一次"
         : "服务异常，请稍后重试";
     return NextResponse.json({ error: friendly }, { status: 500 });
